@@ -1,0 +1,62 @@
+:root {
+    --black: #000000;
+    --white: #ffffff;
+
+    --light: #ebebeb;
+    --light2: #dfdfdf;
+    --grey: #a1a1a1;
+    
+    --red: #ff2222;
+    --blue: #2c2cff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    font-family: "poppins";
+    box-sizing: border-box;
+}
+
+button {
+    outline: none;
+    border: none;
+    
+    cursor: pointer;
+}
+
+.p-fixed {
+    position: fixed;
+}
+
+.d-flex {
+    display: flex;
+    align-items: center;
+}
+
+.fld-col {
+    flex-direction: column;
+}
+
+.jc-center {
+    justify-content: center;
+}
+
+.d-grid {
+    display: grid;
+}
+
+.d-none {
+    display: none;
+}
+
+.h-full {
+    height: 100%;
+}
+
+.bg-red {
+    background: var(--red);
+}
+
+.bg-blue {
+    background: var(--blue);
+}

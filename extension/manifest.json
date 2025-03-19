@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "deepDetective",
+  "version": "1.0",
+  "description": "DeepFake Images Detection by web scrapping .",
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "Icons/icon16.png",
+      "48": "Icons/icon32.png",
+      "128": "Icons/icon128.png"
+    }
+  },
+  "permissions": [
+    "activeTab",
+    "scripting",
+    "storage"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}
