@@ -1,40 +1,33 @@
 from flask import Flask, render_template, redirect, request, url_for, send_file
 from flask import jsonify, json
 from werkzeug.utils import secure_filename
+from image_scraper.scraper import scrape_images
+from image_scraper.csv_handler import save_to_csv
+from deepfake_detector import check_images_for_deepfakes
+import webbrowser
+import csv
 
-# Interaction with the OS
+
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
-# Used for DL applications, computer vision related processes
 import torch
 import torchvision
-
-# For image preprocessing
 from torchvision import transforms
-
-# Combines dataset & sampler to provide iterable over the dataset
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Dataset
-
 import numpy as np
 import cv2
-
-# To recognise face from extracted frames
 import face_recognition
 
-# Autograd: PyTorch package for differentiation of all operations on Tensors
-# Variable are wrappers around Tensors that allow easy automatic differentiation
 from torch.autograd import Variable
 
 import time
 
 import sys
 
-# 'nn' Help us in creating & training of neural network
 from torch import nn
 
-# Contains definition for models for addressing different tasks i.e. image classification, object detection e.t.c.
 from torchvision import models
 
 from skimage import img_as_ubyte
@@ -49,31 +42,22 @@ detectOutput = []
 app = Flask("__main__", template_folder="templates")
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Creating Model Architecture
-
 class Model(nn.Module):
   def __init__(self, num_classes, latent_dim= 2048, lstm_layers=1, hidden_dim=2048, bidirectional=False):
     super(Model, self).__init__()
 
-    # returns a model pretrained on ImageNet dataset
-    model = models.resnext50_32x4d(pretrained= True)
+    model = models.resnext50_32x4d(weights='ResNeXt50_32X4D_Weights.DEFAULT')
 
-    # Sequential allows us to compose modules nn together
     self.model = nn.Sequential(*list(model.children())[:-2])
 
-    # RNN to an input sequence
     self.lstm = nn.LSTM(latent_dim, hidden_dim, lstm_layers, bidirectional)
 
-    # Activation function
     self.relu = nn.LeakyReLU()
 
-    # Dropping out units (hidden & visible) from NN, to avoid overfitting
     self.dp = nn.Dropout(0.4)
 
-    # A module that creates single layer feed forward network with n inputs and m outputs
     self.linear1 = nn.Linear(2048, num_classes)
 
-    # Applies 2D average adaptive pooling over an input signal composed of several input planes
     self.avgpool = nn.AdaptiveAvgPool2d(1)
 
 
@@ -81,7 +65,6 @@ class Model(nn.Module):
   def forward(self, x):
     batch_size, seq_length, c, h, w = x.shape
 
-    # new view of array with same data
     x = x.view(batch_size*seq_length, c, h, w)
 
     fmap = self.model(x)
@@ -95,19 +78,14 @@ class Model(nn.Module):
 
 im_size = 112
 
-# std is used in conjunction with mean to summarize continuous data
 mean = [0.485, 0.456, 0.406]
 
-# provides the measure of dispersion of image grey level intensities
 std = [0.229, 0.224, 0.225]
 
-# Often used as the last layer of a nn to produce the final output
 sm = nn.Softmax()
 
-# Normalising our dataset using mean and std
 inv_normalize = transforms.Normalize(mean=-1*np.divide(mean, std), std=np.divide([1,1,1], std))
 
-# For image manipulation
 def im_convert(tensor):
   image = tensor.to("cpu").clone().detach()
   image = image.squeeze()
@@ -262,6 +240,84 @@ def upload_file():
         print("Uploaded_Files/" + file.filename)
         print(result)
         return jsonify({"success": True, "filename": file.filename, "deepfake": result[0]}), 201
+
+
+
+@app.route('/scrape', methods=['POST'])
+def scrape_endpoint():
+    data = request.json
+    url = data.get('url')
+    folder_path = 'images'
+    csv_file = 'image_data.csv'
+    
+    if not url:
+        return jsonify({'error': 'No URL provided'}), 400
+    
+    image_data = scrape_images(url, f"static/{folder_path}")
+    save_to_csv(image_data, csv_file)
+    
+    # Check for deepfakes and update CSV
+    check_images_for_deepfakes(csv_file)
+    
+    # Collect fake images from the CSV file
+    fake_images = []
+    with open(csv_file, 'r', newline='', encoding='utf-8') as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            if row['Deepfake Flag'] == 'Fake':
+                fake_images.append({'url': row['Image URL'], 'path': row['File Path']})
+
+    # Open the index.html page automatically
+    webbrowser.open('http://127.0.0.1:3000/deeptab')
+
+    return jsonify({
+        'message': 'Scraping and deepfake detection completed',
+        'csv_file': csv_file,
+        'fakeImages': fake_images
+    }), 200
+
+@app.route('/deepfakes', methods=['GET'])
+def deepfakes():
+    csv_file = 'image_data.csv'
+    fake_images = []
+
+    try:
+        with open(csv_file, 'r', newline='', encoding='utf-8') as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                if row['Deepfake Flag'] == 'Fake':
+                    # Convert image URL to a path accessible by Flask
+                    file_path = os.path.join('images', os.path.basename(row['File Path']))
+                    fake_images.append({
+                       'url': f"images/{ os.path.basename(row['File Path']) }",
+                         'path': file_path})
+    except Exception as e:
+        print(f"Failed to read CSV file: {e}")
+
+    return jsonify(fake_images)
+
+@app.route('/close', methods=['POST'])
+def close_endpoint():
+    csv_file = 'image_data.csv'
+    folder_path = 'images'
+    
+    # Clear the CSV file
+    open(csv_file, 'w').close()
+    
+    # Clear the images directory
+    for file_name in os.listdir(folder_path):
+        file_path = os.path.join(folder_path, file_name)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
+
+    return jsonify({'message': 'Resources cleared'}), 200
+
+@app.route('/deeptab',methods=['GET'])
+def deeptab():
+    return render_template('deepfakes.html')
         
 if __name__ == '__main__':
   app.run(host='0.0.0.0',port=3000, debug=True)
+
+
+
