@@ -1,0 +1,40 @@
+<html>
+  <head>
+    <title>Video Streaming Demonstration</title>
+  </head>
+  <body>
+    <h1>Video Streaming Demonstration</h1>
+    <button id="start">Start</button>
+    <button id="stop" disabled>Stop</button>
+    <br>
+    <br>
+    <img id = "video-stream" src="" alt="Video Stream">
+
+    <script>
+      const startButton = document.getElementById('start');
+      const stopButton = document.getElementById('stop');
+      const videoStream = document.getElementById('video-stream');
+
+      let streaming = false
+      startButton.addEventListener('click', () => {
+        if(streaming) return;
+        streaming = true;
+        startButton.disabled = true;
+        stopButton.disabled = false;
+
+        videoStream.src = "{{ url_for('video_feed') }}";
+
+      });
+
+      stopButton.addEventListener('click', () => {
+        if(!streaming)return;
+        streaming = false;
+        startButton.disabled = false;
+        stopButton.disabled = true;
+
+        videoStream.src = "";
+      });
+    </script>
+
+  </body>
+</html>

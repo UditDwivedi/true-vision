@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Screen Stream</title>
+</head>
+<body>
+    <h1>Live Screen Stream</h1>
+    <img id="video-stream" width="800" height="450" alt="Waiting for stream...">
+
+    <script>
+        const ws = new WebSocket("ws://127.0.0.1:3000/stream");
+        const img = document.getElementById("video-stream");
+
+        ws.onmessage = (event) => {
+            const blob = new Blob([event.data], { type: "image/jpeg" });
+            const url = URL.createObjectURL(blob);
+            img.src = url;
+        };
+
+        ws.onerror = (error) => {
+            console.error("WebSocket Error:", error);
+        };
+
+        ws.onclose = () => {
+            console.log("WebSocket closed");
+        };
+    </script>
+</body>
+</html>
