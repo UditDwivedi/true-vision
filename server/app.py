@@ -194,6 +194,11 @@ def video_feed():
 def camera():
     return render_template('camera.html')
 
+@app.route('/testcall')
+def testcall():
+    data = jsonify({"testResponse": "Success"})
+    return data, 200
+
 @sockets.route('/stream')
 def stream(ws):
     while not ws.closed:

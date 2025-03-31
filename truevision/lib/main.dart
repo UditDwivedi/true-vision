@@ -39,7 +39,7 @@ class _DeepfakeDetectorState extends State<DeepfakeDetector> {
   VideoPlayerController? _controller;
   String _confidenceLabel = '';
   String _resultLabel = '';
-  String _hostip = "192.168.1.38";
+  String _hostip = "192.168.143.36";
 
   @override
   void dispose() {
