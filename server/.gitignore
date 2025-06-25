@@ -5,3 +5,5 @@ Uploaded_Files/
 templates/temp.html
 static/images/
 image_data.csv
+Dataset/
+DatasetSmall/
